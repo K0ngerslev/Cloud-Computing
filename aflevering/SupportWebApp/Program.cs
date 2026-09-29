@@ -1,10 +1,20 @@
 using SupportWebApp.Components;
+using SupportWebApp.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Validering af indlejrede objekter (fx User inde i SupportMessage)
+builder.Services.AddValidation();
+
+// CosmosDB-service (dependency injection)
+builder.Services.AddSingleton(_ => new DataService(
+    builder.Configuration["CosmosDb:ConnectionString"]!,
+    builder.Configuration["CosmosDb:DatabaseName"]!,
+    builder.Configuration["CosmosDb:ContainerName"]!));
 
 var app = builder.Build();
 

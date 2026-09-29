@@ -1,0 +1,70 @@
+@page "/support-list"
+@attribute [StreamRendering]
+@using SupportWebApp.Model
+@using SupportWebApp.Service
+@inject DataService DataService
+
+<PageTitle>Henvendelser</PageTitle>
+
+<h1>Oversigt over henvendelser</h1>
+
+<a class="btn btn-primary mb-3" href="create-support">+ Opret ny henvendelse</a>
+
+@if (fejlBesked != null)
+{
+    <div class="alert alert-danger">@fejlBesked</div>
+}
+else if (henvendelser == null)
+{
+    <p><em>Henter henvendelser...</em></p>
+}
+else if (henvendelser.Count == 0)
+{
+    <p>Der er ingen henvendelser endnu.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Dato</th>
+                <th>Navn</th>
+                <th>E-mail</th>
+                <th>Telefon</th>
+                <th>Kategori</th>
+                <th>Beskrivelse</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var h in henvendelser)
+            {
+                <tr>
+                    <td>@h.Date.ToString("dd-MM-yyyy HH:mm")</td>
+                    <td>@h.user?.Name</td>
+                    <td>@h.user?.Mail</td>
+                    <td>@h.user?.Phone</td>
+                    <td>@h.Category</td>
+                    <td>@h.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<SupportMessage>? henvendelser;
+    private string? fejlBesked;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var alle = await DataService.GetSupportMessagesAsync();
+            henvendelser = alle.OrderByDescending(h => h.Date).ToList(); // Nyeste først
+        }
+        catch (Exception ex)
+        {
+            fejlBesked = $"Kunne ikke hente henvendelser: {ex.Message}";
+        }
+    }
+}

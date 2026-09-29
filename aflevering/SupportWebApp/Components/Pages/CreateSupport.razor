@@ -1,0 +1,93 @@
+@page "/create-support"
+@rendermode InteractiveServer
+@using SupportWebApp.Model
+@using SupportWebApp.Service
+@inject DataService DataService
+
+<PageTitle>Opret henvendelse</PageTitle>
+
+<h1>Opret supporthenvendelse</h1>
+
+<EditForm Model="message" OnValidSubmit="OpretHenvendelse">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <h4 class="mt-4">Kontaktoplysninger</h4>
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Navn</label>
+        <InputText id="name" class="form-control" @bind-Value="message.user.Name" />
+        <ValidationMessage For="() => message.user.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label for="phone" class="form-label">Telefon</label>
+        <InputText id="phone" class="form-control" @bind-Value="message.user.Phone" />
+        <ValidationMessage For="() => message.user.Phone" />
+    </div>
+
+    <div class="mb-3">
+        <label for="mail" class="form-label">E-mail</label>
+        <InputText id="mail" class="form-control" @bind-Value="message.user.Mail" />
+        <ValidationMessage For="() => message.user.Mail" />
+    </div>
+
+    <h4 class="mt-4">Henvendelse</h4>
+
+    <div class="mb-3">
+        <label for="category" class="form-label">Kategori</label>
+        <InputSelect id="category" class="form-select" @bind-Value="message.Category">
+            <option value="">-- Vælg kategori --</option>
+            <option value="Teknisk">Teknisk</option>
+            <option value="Faktura">Faktura</option>
+            <option value="Konto">Konto</option>
+            <option value="Andet">Andet</option>
+        </InputSelect>
+        <ValidationMessage For="() => message.Category" />
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Beskrivelse</label>
+        <InputTextArea id="description" class="form-control" rows="5" @bind-Value="message.Description" />
+        <ValidationMessage For="() => message.Description" />
+    </div>
+
+    <button type="submit" class="btn btn-primary" disabled="@gemmer">Opret henvendelse</button>
+</EditForm>
+
+@if (statusBesked != null)
+{
+    <div class="alert @(fejl ? "alert-danger" : "alert-success") mt-3">@statusBesked</div>
+}
+
+@code {
+    private SupportMessage message = new();
+    private string? statusBesked;
+    private bool fejl;
+    private bool gemmer;
+
+    private async Task OpretHenvendelse()
+    {
+        gemmer = true;
+        statusBesked = null;
+
+        try
+        {
+            message.Date = DateTime.Now;
+            await DataService.AddSupportMessageAsync(message);
+
+            statusBesked = "Henvendelsen er oprettet.";
+            fejl = false;
+            message = new SupportMessage(); // Tøm formularen
+        }
+        catch (Exception ex)
+        {
+            statusBesked = $"Der skete en fejl: {ex.Message}";
+            fejl = true;
+        }
+        finally
+        {
+            gemmer = false;
+        }
+    }
+}
