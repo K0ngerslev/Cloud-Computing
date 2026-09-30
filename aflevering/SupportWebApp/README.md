@@ -1,118 +1,94 @@
 # SupportWebApp
 
-En .NET Blazor Web App, hvor brugere kan oprette **supporthenvendelser** og se en oversigt over alle henvendelser. Henvendelserne gemmes i en **Azure Cosmos DB** (NoSQL) database.
+En Blazor Web App hvor man kan oprette supporthenvendelser og se dem i en liste. Henvendelserne bliver gemt i Azure Cosmos DB.
 
-Projektet er lavet som afleveringsopgave **M4.04 – CosmosDB med WebApp** i faget Cloud Computing.
+Projektet er lavet til M4.04 – CosmosDB med WebApp.
 
-## Funktioner
+## Hvad kan den?
 
-- **Opret henvendelse** (`/create-support`): formular med navn, telefon, e-mail, kategori og beskrivelse. Felterne valideres med data annotations, før henvendelsen gemmes i Cosmos DB.
-- **Se henvendelser** (`/support-list`): tabel med alle henvendelser fra Cosmos DB, nyeste først.
+- Oprette en supporthenvendelse med navn, telefon, mail, kategori og beskrivelse.
+- Se alle supporthenvendelser i en liste.
+- Gemme data i Cosmos DB.
+- Bruge validering på felterne i formularen.
 
-## Arkitektur
+## Cosmos DB
 
-| Del | Fil | Beskrivelse |
-|---|---|---|
-| Model | `Model/SupportMessage.cs`, `Model/User.cs` | En henvendelse med indlejret brugerinfo. `id` og `category` (partition key) mappes til de feltnavne, Cosmos DB forventer. |
-| Service | `Service/DataService.cs` | Håndterer forbindelsen til Cosmos DB via `CosmosClient` og har metoder til at indsætte og hente henvendelser. |
-| DI | `Program.cs` | `DataService` registreres som singleton, så hele appen deler én `CosmosClient`. |
-| Sider | `Components/Pages/CreateSupport.razor`, `Components/Pages/SupportList.razor` | Razor-sider til oprettelse og visning af henvendelser. |
+Vi bruger:
 
-NuGet-pakker: `Microsoft.Azure.Cosmos` og `Newtonsoft.Json`.
+- Resource group: IBasTestGroup
+- Location: swedencentral
+- Database: IBasSupportDB
+- Container: ibassupport
+- Partition key: /category
 
-## Opret Cosmos DB-databasen med `az`
+Hvis databasen skal oprettes igen, kan man bruge:
 
-Kræver [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli). Skift værdierne i variablerne ud efter behov (eksemplet er skrevet til PowerShell).
+    az provider register --namespace Microsoft.DocumentDB --wait
 
-```powershell
-# Log ind i Azure
-az login
+    az group create \
+      --name IBasTestGroup \
+      --location swedencentral
 
-# Navne
-$RG        = "ibas-rg"
-$LOCATION  = "northeurope"
-$ACCOUNT   = "ibas-db-account-16038"   # skal være globalt unikt
-$DATABASE  = "IBasSupportDB"
-$CONTAINER = "ibassupport"
+    az cosmosdb create \
+      --name <UNIKT-NAVN> \
+      --resource-group IBasTestGroup \
+      --enable-free-tier true
 
-# 1. Resource group
-az group create --name $RG --location $LOCATION
+    az cosmosdb sql database create \
+      --account-name <UNIKT-NAVN> \
+      --resource-group IBasTestGroup \
+      --name IBasSupportDB
 
-# 2. Cosmos DB-konto (NoSQL, serverless)
-az cosmosdb create `
-  --name $ACCOUNT `
-  --resource-group $RG `
-  --kind GlobalDocumentDB `
-  --locations regionName=$LOCATION `
-  --capabilities EnableServerless
+    az cosmosdb sql container create \
+      --account-name <UNIKT-NAVN> \
+      --resource-group IBasTestGroup \
+      --database-name IBasSupportDB \
+      --name ibassupport \
+      --partition-key-path "/category"
 
-# 3. Database
-az cosmosdb sql database create `
-  --account-name $ACCOUNT `
-  --resource-group $RG `
-  --name $DATABASE
+Connection string kan hentes med:
 
-# 4. Container med partition key /category
-az cosmosdb sql container create `
-  --account-name $ACCOUNT `
-  --resource-group $RG `
-  --database-name $DATABASE `
-  --name $CONTAINER `
-  --partition-key-path "/category"
+    az cosmosdb keys list \
+      --name <UNIKT-NAVN> \
+      --resource-group IBasTestGroup \
+      --type connection-strings \
+      --query "connectionStrings[0].connectionString" \
+      --output tsv
 
-# 5. Hent connection string
-az cosmosdb keys list `
-  --name $ACCOUNT `
-  --resource-group $RG `
-  --type connection-strings `
-  --query "connectionStrings[0].connectionString" `
-  --output tsv
-```
+Connection string skal ikke lægges direkte på GitHub.
 
-## Kør projektet lokalt
+## Kør projektet
 
-1. Sæt database- og containernavn i `appsettings.json`:
+Connection string sættes som user-secret:
 
-   ```json
-   "CosmosDb": {
-     "ConnectionString": "",
-     "DatabaseName": "IBasSupportDB",
-     "ContainerName": "ibassupport"
-   }
-   ```
+    dotnet user-secrets set "CosmosDb:ConnectionString" "<connection string>"
 
-2. Gem connection string som **user-secret**, så den ikke kommer med i Git:
+Derefter startes projektet:
 
-   ```
-   dotnet user-secrets set "CosmosDb:ConnectionString" "<connection string fra trin 5>"
-   ```
-
-3. Start appen:
-
-   ```
-   dotnet run
-   ```
-
-   Åbn den URL, der vises i konsollen.
+    dotnet run
 
 ## Status
 
-**Det har vi nået:**
-- Blazor Web App oprettet ud fra `dotnet new blazor`-templaten.
-- Model for supporthenvendelser med validering (påkrævede felter, gyldig e-mail og telefon, længde på beskrivelse).
-- Serviceklasse til Cosmos DB, registreret med dependency injection.
-- Side til oprettelse af henvendelser, som gemmes i Cosmos DB.
-- Side med oversigt over alle henvendelser.
-- Navigation mellem forside, oprettelse og oversigt. Counter- og Weather-siderne er fjernet.
-- Connection string holdes ude af repository'et via user-secrets.
+Det har vi lavet indtil videre:
 
-**Det mangler:**
-- Man kan ikke redigere, lukke eller slette en henvendelse.
-- Der er ingen login, så alle kan se alle henvendelser.
-- Appen kører kun lokalt og er ikke deployet til Azure.
+- Blazor Web App er oprettet.
+- Cosmos DB er oprettet i Azure.
+- Database og container er oprettet.
+- Der er lavet en model til supporthenvendelser.
+- Der er lavet validering af input.
+- Man kan oprette supporthenvendelser.
+- Man kan se supporthenvendelser i en liste.
+- Cosmos DB bruges til at gemme data.
+- Connection string bliver gemt med user-secrets.
 
-**Næste skridt:**
-- Deploye appen til Azure App Service og gemme connection string som App Setting eller i Azure Key Vault.
-- Bruge Managed Identity i stedet for en nøgle til at forbinde til Cosmos DB.
-- Tilføje status på henvendelser (fx *åben*/*lukket*) og mulighed for at opdatere dem.
-- Tilføje filtrering på kategori i oversigten (kategori er partition key, så forespørgsler pr. kategori er billige).
+Det mangler:
+
+- Der er ikke login eller brugerrettigheder endnu.
+- Man kan ikke redigere, lukke eller slette supporthenvendelser.
+- Projektet er ikke deployet til Azure endnu.
+
+## Næste skridt
+
+Det næste vil være at få projektet deployet til Azure og få Cosmos DB-forbindelsen til at virke der.
+
+Derefter kunne man lave status på supporthenvendelser, fx åben/lukket, og mulighed for at ændre en henvendelse.
